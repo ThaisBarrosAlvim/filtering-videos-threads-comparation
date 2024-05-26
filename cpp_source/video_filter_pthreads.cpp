@@ -11,6 +11,7 @@
 using namespace cv;
 using namespace std;
 
+// Structure to hold frame data and its processing results
 struct ThreadData {
     Mat frame;
     Mat filtered_h1;
@@ -18,6 +19,7 @@ struct ThreadData {
     int frameOrder;
 };
 
+// High-pass filters
 Mat h1 = (Mat_<double>(3, 3) << 0, -1, 0, -1, 4, -1, 0, -1, 0);
 Mat h2 = (Mat_<double>(3, 3) << -1, -1, -1, -1, 8, -1, -1, -1, -1);
 
@@ -30,6 +32,7 @@ condition_variable cvFrameQueue;
 bool isReadingComplete = false;
 bool isProcessingComplete = false;
 
+// Function to process frames using high-pass filters
 void* processFrames(void* arg) {
     while (true) {
         unique_lock<mutex> lock(mtxFrameQueue);
@@ -43,7 +46,7 @@ void* processFrames(void* arg) {
         frameQueue.pop();
         lock.unlock();
 
-        // Processa o frame
+        // Process the frame
         threadData.filtered_h1 = threadData.frame.clone();
         threadData.filtered_h2 = threadData.frame.clone();
         filter2D(threadData.filtered_h1, threadData.filtered_h1, -1, h1);
@@ -79,11 +82,13 @@ int main(int argc, char** argv) {
 
     auto start = chrono::high_resolution_clock::now();
 
+    // Create and start threads for processing frames
     pthread_t* threads = new pthread_t[numThreads];
     for (int i = 0; i < numThreads; ++i) {
         pthread_create(&threads[i], NULL, processFrames, NULL);
     }
 
+    // Read frames from the video and enqueue them for processing
     Mat frame;
     int frameOrder = 0;
     while (cap.read(frame)) {
@@ -99,6 +104,7 @@ int main(int argc, char** argv) {
     isReadingComplete = true;
     cvFrameQueue.notify_all();
 
+    // Wait for all threads to complete processing
     for (int i = 0; i < numThreads; ++i) {
         pthread_join(threads[i], NULL);
     }
@@ -107,6 +113,7 @@ int main(int argc, char** argv) {
     chrono::duration<double> duration = end - start;
     cout << "Pthreads version execution time: " << duration.count() << " seconds" << endl;
 
+    // Display processed frames if the 'show' flag is set
     if (show) {
         for (const auto& entry : processedFrames) {
             imshow("Original Frame", entry.second.frame);

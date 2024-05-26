@@ -9,6 +9,7 @@
 using namespace std;
 using namespace cv;
 
+// Structure to hold frame data and its processing results
 struct ThreadData {
     Mat frame;
     Mat filtered_h1;
@@ -16,7 +17,7 @@ struct ThreadData {
     int frameOrder;
 };
 
-// Função para aplicar um filtro passa alta em uma imagem
+// Function to apply a high-pass filter to an image
 Mat applyHighPassFilter(const Mat image, const Mat filter) {
     Mat result;
     filter2D(image, result, -1, filter);
@@ -30,6 +31,7 @@ unordered_map<int, ThreadData> tabelaHash;
 bool isReadingComplete = false;
 bool isProcessingComplete = false;
 
+// Function to process frames with high-pass filters
 void processFrames() {
     while (true) {
         if (frameQueue.empty()) {
@@ -53,11 +55,11 @@ void processFrames() {
                 continue;
             }
 
-            // Define os filtros passa alta
+            // Define high-pass filters
             Mat h1 = (Mat_<int>(3, 3) << 0, -1, 0, -1, 4, -1, 0, -1, 0);
             Mat h2 = (Mat_<int>(3, 3) << -1, -1, -1, -1, 8, -1, -1, -1, -1);
 
-            // Processa o frame
+            // Process the frame
             threadData.filtered_h1 = applyHighPassFilter(threadData.frame, h1);
             threadData.filtered_h2 = applyHighPassFilter(threadData.filtered_h1, h2);
 
@@ -71,9 +73,9 @@ void processFrames() {
         }
     }
     isProcessingComplete = true;
-    cout << "Fim do processamento" << endl;
 }
 
+// Function to write processed frames to a video file
 void writeVideo(VideoCapture& video, bool show) {
     VideoWriter videoWriter;
     Size frameSize;
@@ -133,14 +135,14 @@ void writeVideo(VideoCapture& video, bool show) {
                 break;
         }
     }
-    cout << "Fim da escrita" << endl;
     videoWriter.release();
 }
 
+// Function to read video frames and enqueue them for processing
 void readVideo(VideoCapture& video) {
     Mat frame;
     int count = 0;
-    cout << "Numero de frames: " << numThreads << endl << "-------------------------" << endl;
+    cout << "Number of frames: " << numThreads << endl;
 
     while (video.read(frame)) {
         ThreadData threadData;
@@ -153,10 +155,10 @@ void readVideo(VideoCapture& video) {
             frameQueue.push(threadData);
         }
     }
-    cout << "Terminou de ler" << endl;
     isReadingComplete = true;
 }
 
+// Main function to execute the program
 int main(int argc, char** argv) {
     if (argc < 2) {
         cout << "Usage: " << argv[0] << " <video-file-path> [show] [num_threads]" << endl;
@@ -174,6 +176,7 @@ int main(int argc, char** argv) {
 
     auto start = chrono::high_resolution_clock::now();
 
+    // Parallel sections for reading, processing, and writing video frames
     #pragma omp parallel num_threads(numThreads)
     {
         #pragma omp sections nowait
